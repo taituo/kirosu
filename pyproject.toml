@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kirosu"
+version = "0.1.0"
+description = "Enterprise-grade AI Agent Swarm Orchestrator"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Kiro Swarm Team", email = "kirosu@example.com" },
+]
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+    "mcp>=1.0.0",
+    "textual>=0.50.0",
+    "rich>=13.0.0",
+    "pydantic>=2.0.0",
+    "tomli>=2.0.0; python_version < '3.11'",
+]
+
+[project.scripts]
+kirosu = "kirosu.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["kirosu"]

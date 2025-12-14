@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import socketserver
 import threading
 import time
@@ -15,7 +16,10 @@ class _HubState:
     def __init__(self, store: TaskStore, lease_seconds: int):
         self.store = store
         self.lease_seconds = lease_seconds
+        self.store = store
+        self.lease_seconds = lease_seconds
         self._shutdown = threading.Event()
+        self.auth_key = os.environ.get("KIRO_SWARM_KEY")
 
     def shutdown_requested(self) -> bool:
         return self._shutdown.is_set()
@@ -42,6 +46,13 @@ class JsonlHubHandler(socketserver.StreamRequestHandler):
                     req_id = req.get("id")
                     method = req["method"]
                     params = req.get("params") or {}
+                    
+                    # Auth Check
+                    if state.auth_key:
+                        client_key = params.get("auth_token")
+                        if client_key != state.auth_key:
+                            raise PermissionError("Invalid KIRO_SWARM_KEY")
+
                     result = self._dispatch(state, method, params)
                     resp = {"id": req_id, "result": result, "error": None}
                 except Exception as e:
@@ -56,7 +67,8 @@ class JsonlHubHandler(socketserver.StreamRequestHandler):
         if method == "enqueue":
             prompt = str(params["prompt"])
             system_prompt = params.get("system_prompt")
-            task_id = state.store.enqueue(prompt, system_prompt=str(system_prompt) if system_prompt else None)
+            task_type = str(params.get("type", "chat"))
+            task_id = state.store.enqueue(prompt, system_prompt=str(system_prompt) if system_prompt else None, task_type=task_type)
             return {"task_id": task_id}
 
         if method == "lease":

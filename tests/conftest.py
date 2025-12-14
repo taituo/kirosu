@@ -3,9 +3,10 @@ import os
 import tempfile
 import threading
 import time
-from kiro_swarm.db import TaskStore
-from kiro_swarm.hub import run_hub
-from kiro_swarm.agent import KiroAgent
+from unittest.mock import patch
+from kirosu.db import TaskStore
+from kirosu.hub import run_hub
+from kirosu.agent import KiroAgent
 
 @pytest.fixture
 def db_path():
@@ -43,4 +44,13 @@ def hub_port(db_path):
             raise RuntimeError("Hub failed to start")
         time.sleep(0.01)
         
-    return port_container["port"]
+    yield port_container["port"]
+    
+    # Cleanup
+    # We can't easily stop the server thread, but it's daemon so it will die with the test process
+
+@pytest.fixture
+def mock_kiro_run():
+    with patch("kirosu.agent.KiroAgent._run_kiro") as mock:
+        mock.return_value = "Mocked Kiro Response"
+        yield mock

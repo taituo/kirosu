@@ -11,6 +11,7 @@ class Task:
     task_id: int
     prompt: str
     system_prompt: str | None
+    type: str  # "chat" or "python"
     status: str
     created_at: float
     updated_at: float
@@ -43,8 +44,9 @@ class TaskStore:
                   task_id INTEGER PRIMARY KEY AUTOINCREMENT,
                   prompt TEXT NOT NULL,
                   system_prompt TEXT,
-                  status TEXT NOT NULL,
-                  created_at REAL NOT NULL,
+            type TEXT DEFAULT 'chat',
+            status TEXT NOT NULL,
+            created_at REAL NOT NULL,
                   updated_at REAL NOT NULL,
                   leased_until REAL,
                   worker_id TEXT,
@@ -55,16 +57,16 @@ class TaskStore:
             )
             self._db.commit()
 
-    def enqueue(self, prompt: str, system_prompt: str | None = None) -> int:
-        now = time.time()
+    def enqueue(self, prompt: str, system_prompt: str | None = None, task_type: str = "chat") -> int:
         with self._lock:
+            now = time.time()
             cur = self._db.cursor()
             cur.execute(
-                "INSERT INTO tasks(prompt,system_prompt,status,created_at,updated_at) VALUES(?,?,?,?,?)",
-                (prompt, system_prompt, "queued", now, now),
+                "INSERT INTO tasks (prompt, system_prompt, type, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (prompt, system_prompt, task_type, "queued", now, now),
             )
             self._db.commit()
-            return int(cur.lastrowid)
+            return cur.lastrowid  # type: ignore
 
     def lease(self, worker_id: str, max_tasks: int, lease_seconds: int) -> list[Task]:
         now = time.time()
@@ -166,7 +168,8 @@ class TaskStore:
         return Task(
             task_id=int(row["task_id"]),
             prompt=str(row["prompt"]),
-            system_prompt=str(row["system_prompt"]) if row["system_prompt"] is not None else None,
+            system_prompt=row["system_prompt"],
+            type=row["type"] if "type" in row.keys() else "chat",
             status=str(row["status"]),
             created_at=float(row["created_at"]),
             updated_at=float(row["updated_at"]),
@@ -175,3 +178,4 @@ class TaskStore:
             result=str(row["result"]) if row["result"] is not None else None,
             error=str(row["error"]) if row["error"] is not None else None,
         )
+

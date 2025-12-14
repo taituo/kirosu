@@ -1,9 +1,9 @@
 import pytest
 import time
 import threading
-from kiro_swarm.agent import KiroAgent, HubClient
+from kirosu.agent import KiroAgent, HubClient
 
-def test_system_flow(hub_port):
+def test_system_flow(hub_port, mock_kiro_run):
     client = HubClient("127.0.0.1", hub_port)
     
     # Enqueue a task
@@ -38,4 +38,4 @@ def test_system_flow(hub_port):
     t.join(timeout=1)
     
     assert result is not None
-    assert "kiro-cli" in result or "version" in result
+    assert result == "Mocked Kiro Response"

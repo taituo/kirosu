@@ -2,9 +2,9 @@ import pytest
 import time
 import threading
 import random
-from kiro_swarm.agent import KiroAgent, HubClient
+from kirosu.agent import KiroAgent, HubClient
 
-def test_concurrency(hub_port):
+def test_concurrency(hub_port, mock_kiro_run):
     """
     Test that multiple agents can process tasks concurrently without race conditions.
     """

@@ -1,6 +1,6 @@
 import pytest
 import time
-from kiro_swarm.db import TaskStore
+from kirosu.db import TaskStore
 
 def test_enqueue(store):
     task_id = store.enqueue("test prompt", system_prompt="sys prompt")

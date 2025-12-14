@@ -6,6 +6,9 @@ from typing import NoReturn
 from .hub import run_hub
 from .agent import KiroAgent, HubClient
 from .dashboard import run_dashboard
+from .mcp_server import run_mcp_server
+from .api import run_api
+from .config import get_db_path
 
 
 def main() -> NoReturn:
@@ -16,7 +19,7 @@ def main() -> NoReturn:
     hub_parser = subparsers.add_parser("hub", help="Start the swarm hub")
     hub_parser.add_argument("--host", default="127.0.0.1", help="Hub host")
     hub_parser.add_argument("--port", type=int, default=8765, help="Hub port")
-    hub_parser.add_argument("--db", default="kiro_swarm.db", help="Database path")
+    hub_parser.add_argument("--db", default=get_db_path(), help="Database path")
     hub_parser.add_argument("--lease-seconds", type=int, default=300, help="Task lease duration")
 
     # Agent command
@@ -42,6 +45,14 @@ def main() -> NoReturn:
     dash_parser = subparsers.add_parser("dashboard", help="Start the swarm dashboard")
     dash_parser.add_argument("--host", default="127.0.0.1", help="Hub host")
     dash_parser.add_argument("--port", type=int, default=8765, help="Hub port")
+
+    # MCP command
+    subparsers.add_parser("mcp", help="Start the MCP server")
+
+    # API command
+    api_parser = subparsers.add_parser("api", help="Start the REST API")
+    api_parser.add_argument("--host", default="127.0.0.1", help="API host")
+    api_parser.add_argument("--port", type=int, default=8000, help="API port")
 
     args = parser.parse_args()
 
@@ -85,6 +96,14 @@ def main() -> NoReturn:
 
     elif args.command == "dashboard":
         run_dashboard(args.host, args.port)
+        sys.exit(0)
+
+    elif args.command == "mcp":
+        run_mcp_server()
+        sys.exit(0)
+
+    elif args.command == "api":
+        run_api(args.host, args.port)
         sys.exit(0)
 
 if __name__ == "__main__":
