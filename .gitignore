@@ -5,3 +5,7 @@ __pycache__/
 .venv/
 .pytest_cache/
 mittelo/
+.kiro/
+*.log
+workspaces/
+demo_artifacts/

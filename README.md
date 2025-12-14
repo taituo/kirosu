@@ -26,13 +26,36 @@ Kirosu (formerly `kiro-swarm`) is a robust platform for managing swarms of AI ag
     - **MCP Server**: Expose swarm capabilities to other AI assistants.
     - **REST API**: FastAPI-based endpoints for programmatic access.
 - **Configuration**: Global (`~/.kirosu/`) and local (`.kiro/`) configuration merging.
+- **Workspace Management**: Agents operate in a defined `workdir`. This can be:
+    - **Shared**: All agents work in the same repo (e.g., for analysis).
+    - **Isolated**: Each agent has a private sandbox (e.g., for bug fixing).
+
+## 🛠️ Advanced Features
+
+### 📝 Logging
+Debug your swarm with detailed logs.
+```bash
+kirosu agent --log-file agent.log --verbose
+```
+With `--verbose`, the full conversation (including tool outputs) is saved to the log file.
+
+### 🧠 Context Injection
+Define "pre-information" or shared context for your agents.
+Create a file `.kiro/context.md` in your project root or agent workdir.
+```markdown
+# Project Context
+- Architecture: Microservices
+- Coding Style: PEP8
+- Secret Word: BANANA
+```
+This content is automatically prepended to the system prompt for **every task**.
 
 ## 🚀 Demos
 
 We provide ready-to-run examples to demonstrate Kirosu's capabilities:
 
 1.  **[Artifact Generation](examples/artifact_demo.py)**: Single agent creating files.
-2.  **[10-Worker Swarm](examples/swarm_demo.py)**: Stress test with 10 concurrent agents.
+2.  **[3-Worker Swarm](examples/three_worker_demo.py)**: Structured demo with isolated workspaces and logging.
 3.  **[Massive Data Processing](examples/massive_data.py)**: Batch processing pattern.
 4.  **[Bug Hunter](examples/bug_hunter.py)**: Automated debugging workflow.
 

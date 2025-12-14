@@ -59,5 +59,7 @@ path = "/path/to/kirosu.db"
 
 [agents.default]
 model = "claude-haiku-4.5"
+# Workdir: Defaults to current directory. 
+# Can be shared (e.g., repo root) or isolated (e.g., /tmp/agent_1).
 workdir = "/tmp/kirosu_work"
 ```

@@ -80,8 +80,18 @@ class KiroAgent:
         self.model = model or config.get("model") or os.environ.get("MITTELO_KIRO_MODEL", "claude-haiku-4.5")
         self.workdir = workdir or config.get("workdir")
 
-    def run_loop(self, poll_interval: float = 1.0):
-        logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    def run_loop(self, poll_interval: float = 1.0, log_file: str | None = None, verbose: bool = False):
+        level = logging.DEBUG if verbose else logging.INFO
+        handlers = [logging.StreamHandler()]
+        if log_file:
+            handlers.append(logging.FileHandler(log_file))
+            
+        logging.basicConfig(
+            level=level,
+            format="%(asctime)s [%(levelname)s] %(message)s",
+            handlers=handlers,
+            force=True
+        )
         logging.info(f"Agent {self.worker_id} started. Connecting to {self.client.host}:{self.client.port}")
         while True:
             try:
@@ -103,6 +113,17 @@ class KiroAgent:
         system_prompt = task.get("system_prompt")
         task_type = task.get("type", "chat")
         
+        # Context Injection
+        context_file = os.path.join(self.workdir or os.getcwd(), ".kiro", "context.md")
+        if os.path.exists(context_file):
+            try:
+                with open(context_file, "r") as f:
+                    context_content = f.read()
+                system_prompt = f"{context_content}\n\n{system_prompt}" if system_prompt else context_content
+                logging.info(f"Injected context from {context_file}")
+            except Exception as e:
+                logging.warning(f"Failed to load context file: {e}")
+        
         logging.info(f"Leased task {task_id} ({task_type}): {prompt[:50]}...")
         
         try:
@@ -113,6 +134,7 @@ class KiroAgent:
                 
             self.client.call("ack", {"task_id": task_id, "status": "done", "result": result})
             logging.info(f"Task {task_id} done.")
+            logging.debug(f"Task {task_id} result:\n{result}")
         except Exception as e:
             error_msg = str(e)
             self.client.call("ack", {"task_id": task_id, "status": "failed", "error": error_msg})
