@@ -1,10 +1,10 @@
-# ![Kirosu Logo](kirosu.png) Kirosu 🐝
+# ![Kirosu Logo](kirosu.png) Kirosu
 
 **Enterprise-grade AI Agent Swarm Orchestrator.**
 
 Kirosu (formerly `kiro-swarm`) is a robust platform for managing swarms of AI agents. It provides a centralized Hub for task management, distributed Agents for execution, and enterprise features like secure authentication and persistent connections.
 
-## 📚 Documentation
+## Documentation
 
 - **[Getting Started](HOW_TO_RUN.md)**: Installation and running your first swarm.
 - **[Technology & Architecture](technology.md)**: Deep dive into system design and protocols.
@@ -12,7 +12,7 @@ Kirosu (formerly `kiro-swarm`) is a robust platform for managing swarms of AI ag
 - **[Go Support](go/README.md)**: Protocol documentation for Go workers.
 - **[User Stories](user_stories.md)**: Original requirements and user flows.
 
-## ✨ Key Features
+## Key Features
 
 - **Hub-Agent Architecture**: Centralized SQLite-backed task queue with distributed, stateless workers.
 - **Enterprise Grade**:
@@ -30,16 +30,16 @@ Kirosu (formerly `kiro-swarm`) is a robust platform for managing swarms of AI ag
     - **Shared**: All agents work in the same repo (e.g., for analysis).
     - **Isolated**: Each agent has a private sandbox (e.g., for bug fixing).
 
-## 🛠️ Advanced Features
+## Advanced Features
 
-### 📝 Logging
+### Logging
 Debug your swarm with detailed logs.
 ```bash
 kirosu agent --log-file agent.log --verbose
 ```
 With `--verbose`, the full conversation (including tool outputs) is saved to the log file.
 
-### 🧠 Context Injection
+### Context Injection
 Define "pre-information" or shared context for your agents.
 Create a file `.kiro/context.md` in your project root or agent workdir.
 ```markdown
@@ -50,7 +50,7 @@ Create a file `.kiro/context.md` in your project root or agent workdir.
 ```
 This content is automatically prepended to the system prompt for **every task**.
 
-## 🚀 Demos
+## Demos
 
 We provide ready-to-run examples to demonstrate Kirosu's capabilities:
 
@@ -61,7 +61,7 @@ We provide ready-to-run examples to demonstrate Kirosu's capabilities:
 
 Run them with `uv run examples/<script_name>.py`.
 
-## 🛠️ Development
+## Development
 
 ### Installation
 ```bash
