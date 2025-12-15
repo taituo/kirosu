@@ -93,21 +93,42 @@ Kirosu supports a `type="python"` task which executes arbitrary code on the agen
 - **Mitigation**: Explicit opt-in via `trust-all-tools` and `KIRO_SWARM_KEY` for auth.
 - **Use Case**: Bug fixing, file system manipulation, complex calculations.
 
-### 3. LLM Provider Adapter
-Kirosu uses an Adapter Pattern (`kirosu/providers.py`) to interface with different LLM CLIs.
+### 3. LLM Provider Adapter Architecture
+Kirosu employs a flexible Adapter Pattern to decouple the core agent logic from the specific LLM execution environment. This is critical for solving token exhaustion and supporting diverse model backends.
 
-- **KiroCliProvider**: wrapper for `kiro-cli` (Standard).
-- **CodexProvider**: wrapper for `codex` (Frontier models).
-  - Supports `--dangerously-bypass-approvals-and-sandbox` for high-throughput automation.
-  - Activated via `KIRO_PROVIDER=codex`.
+**Interface:** `kirosu.providers.LLMProvider`
 
-## 4. Workdir Strategies
+#### Supported Providers:
+1.  **`KiroCliProvider` (Default)**
+    - Wraps the standard `kiro-cli`.
+    - Best for: Interactive debugging, standard workflows.
+    - behavior: `subprocess.run(["kiro-cli", ...])`
+
+2.  **`CodexProvider` (Frontier)**
+    - Wraps the `codex` CLI (e.g., OpenAI's advanced tool).
+    - Best for: High-volume, autonomous swarms.
+    - **Optimization**: Automatically applies `--dangerously-bypass-approvals-and-sandbox` for zero-friction execution.
+    - **Model**: Defaults to `gpt-5.1-codex-mini` for speed/cost balance.
+
+### 4. Docker & Deployment
+Kirosu is designed to be container-native.
+
+**Dockerfile Strategy**:
+- Base: `python:3.11-slim` (Minimizes image size).
+- Volume: `/app/data` for SQLite persistence.
+- Network: Agents communicate with Hub via internal Docker network (`kiro-net`), isolating traffic from the host.
+
+**Docker Compose**:
+- Orchestrates the Hub and scalable Agent replicas.
+- Injects environment variables (`KIRO_PROVIDER`) directly into containers.
+
+### 5. Workdir Strategies
 The `workdir` config determines how agents share state:
 - **Shared Workspace**: Agents share a directory (e.g., repo root). Useful for read-only analysis or when file locking is managed externally.
 - **Isolated Workspace**: Agents work in private directories (e.g., `/tmp/agent_1`). Essential for "Dangerous" execution to prevent side effects.
 - **Context Injection**: The `.kiro/context.md` file is resolved relative to the agent's `workdir`.
 
-### 5. Swarm Patterns: Map-Reduce
+### 6. Swarm Patterns: Map-Reduce
 For massive data processing, we use a Splitter-Aggregator pattern.
 
 ```mermaid
@@ -133,3 +154,4 @@ flowchart LR
 
 - **Authentication**: Token-based (`KIRO_SWARM_KEY`) for all Hub interactions.
 - **Network**: Binds to `127.0.0.1` by default. Can be exposed via SSH tunnels or VPNs for distributed swarms.
+- **Sandboxing**: By default, agents respect strict permissions. "Dangerous Mode" (`trust-all-tools`) requires explicit user confirmation via flags or config.

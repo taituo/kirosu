@@ -56,7 +56,7 @@ def suggest_strategy(task_description: str) -> Dict[str, Any]:
                 "command": f"kirosu agent --id single_worker"
             }
 
-        output = process.stdout.strip()
+        output = output.strip()
         
         # Extremely basic cleanup if the LLM adds markdown blocks despite instructions
         if output.startswith("```json"):
@@ -77,6 +77,7 @@ def suggest_strategy(task_description: str) -> Dict[str, Any]:
             }
 
     except Exception as e:
+        logging.error(f"suggest_strategy failed: {e}")
         return {
             "error": str(e),
             "topology": "single"
@@ -185,13 +186,9 @@ pipeline:
             print(f"📋 Plan generated:\n{yaml_plan}")
             
             # Step 2: Execution (Invoking the pipeline runner - simulated here for CLI capability)
-            # In a real scenario, this would import run_pipeline from utils or similar
-            # For now, we return the path so the caller can run it, or we subprocess kirosu run-pipeline
-            
             logging.info("RecursiveStrategy: Executing plan...")
-            # We assume 'kirosu run-pipeline' is available or we use the internal API if we refactored validly.
-            # Since run-pipeline logic isn't in my view yet, I'll simulate or assume CLI access.
             
+            env = os.environ.copy()
             exec_cmd = ["kirosu", "run-pipeline", "--file", plan_file]
             subprocess.run(exec_cmd, check=True, env=env)
             

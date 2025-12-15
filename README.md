@@ -2,66 +2,37 @@
 
 **Enterprise-grade AI Agent Swarm Orchestrator.**
 
-Kirosu (formerly `kiro-swarm`) is a robust platform for managing swarms of AI agents. It provides a centralized Hub for task management, distributed Agents for execution, and enterprise features like secure authentication and persistent connections.
+Kirosu (formerly `kiro-swarm`) is a production-ready platform for orchestrating swarms of AI agents. It bridges the gap between simple chat interfaces and complex, autonomous agent workflows. Kirosu features a centralized Hub for task management, distributed Agents for execution, and an Adapter Pattern for pluggable LLM backends (Codex, Standard CLI).
 
-## Documentation
+## 📚 Documentation Index
 
-- **[Getting Started](HOW_TO_RUN.md)**: Installation and running your first swarm.
-- **[Technology & Architecture](technology.md)**: Deep dive into system design and protocols.
-- **[Advanced Use Cases](use_cases.md)**: Massive data processing, bug hunting, and more.
+- **[Technology Architecture](technology.md)**: Deep dive into the Hub-Spoke design, protocols (JSON-RPC), and Docker internals.
+- **[Use Cases](use_cases.md)**: Enterprise scenarios like "Massive Data Processing", "Automated Code Review", and "Feature Swarms".
 - **[Go Support](go/README.md)**: Protocol documentation for Go workers.
-- **[User Stories](user_stories.md)**: Original requirements and user flows.
+- **[User Stories](user_stories.md)**: Original requirements and validation flows.
 
-## Key Features
+## ✨ Key Features
 
-- **Hub-Agent Architecture**: Centralized SQLite-backed task queue with distributed, stateless workers.
-- **Enterprise Grade**:
-    - **Security**: Token-based authentication (`KIRO_SWARM_KEY`).
-    - **Reliability**: Persistent TCP connections with retry logic.
-    - **Flexibility**: "Dangerous" mode for arbitrary Python code execution.
-- **Observability**:
-    - Real-time TUI Dashboard (`kirosu dashboard`).
-    - Structured logging.
-- **Integration**:
-    - **MCP Server**: Expose swarm capabilities to other AI assistants.
-    - **REST API**: FastAPI-based endpoints for programmatic access.
-- **Configuration**: Global (`~/.kirosu/`) and local (`.kiro/`) configuration merging.
-- **Workspace Management**: Agents operate in a defined `workdir`. This can be:
-    - **Shared**: All agents work in the same repo (e.g., for analysis).
-    - **Isolated**: Each agent has a private sandbox (e.g., for bug fixing).
+### 🏢 Architecture
+- **Hub-Spoke Design**: Centralized SQLite-backed task queue with distributed, stateless workers.
+- **Persistent Connections**: TCP-based communication with automatic reconnection and retry logic.
+- **Docker Ready**: Full `docker-compose` support for instant deployment.
 
-## Advanced Features
+### 🧠 Intelligence & Strategy
+- **Strategy Suggestion**: `kirosu suggest "task description"` analyzes your goal and recommends the best agent topology (Sequential, Parallel, Recursive).
+- **Recursive Planning**: `kirosu run-recursive` spawns a "Planner Agent" that breaks down complex goals into a YAML pipeline, which is then executed by the swarm.
+- **Multi-Provider Support**: Switch seamlessly between backends via `KIRO_PROVIDER`.
+  - **Codex**: Frontier model automation (`gpt-5.1-codex-mini`).
+  - **Kiro CLI**: Standard local/remote execution.
 
-### Logging
-Debug your swarm with detailed logs.
-```bash
-kirosu agent --log-file agent.log --verbose
-```
-With `--verbose`, the full conversation (including tool outputs) is saved to the log file.
-
-### Context Injection
-Define "pre-information" or shared context for your agents.
-Create a file `.kiro/context.md` in your project root or agent workdir.
-```markdown
-# Project Context
-- Architecture: Microservices
-- Coding Style: PEP8
-- Secret Word: BANANA
-```
-This content is automatically prepended to the system prompt for **every task**.
-
-## Demos
-
-We provide ready-to-run examples to demonstrate Kirosu's capabilities:
-
-1.  **[Artifact Generation](examples/artifact_demo.py)**: Single agent creating files.
-2.  **[3-Worker Swarm](examples/three_worker_demo.py)**: Structured demo with isolated workspaces and logging.
-3.  **[Massive Data Processing](examples/massive_data.py)**: Batch processing pattern.
-4.  **[Bug Hunter](examples/bug_hunter.py)**: Automated debugging workflow.
-
-Run them with `uv run examples/<script_name>.py`.
+### 🛡️ Enterprise Grade
+- **Human-in-the-Loop (HITL)**: Sensitive tasks pause for `kirosu approve` before execution.
+- **Security**: Token-based authentication (`KIRO_SWARM_KEY`) and explicit "Dangerous Mode" opt-in.
+- **Observability**: Real-time TUI Dashboard (`kirosu dashboard`) and JSON metrics endpoint.
 
 ## 🚀 Quick Start (Docker)
+
+The fastest way to run a full swarm (Hub + 3 Agents).
 
 ```bash
 # Start Hub and 3 Codex Agents
@@ -80,28 +51,48 @@ docker-compose up --scale agent=3
     kirosu hub
     ```
 
-3.  **Start Agent**:
+3.  **Start Agent** (in a new terminal):
     ```bash
+    # Standard Agent
     kirosu agent
+    
+    # Codex Agent (High Speed)
+    export KIRO_PROVIDER=codex
+    kirosu agent --model gpt-5.1-codex-mini
     ```
 
-## Development
+4.  **Submit a Task**:
+    ```bash
+    kirosu task add "Analyze the server logs"
+    ```
 
-### Installation
-```bash
-uv pip install -e .
-```
+## 🔧 Configuration
 
-### Running Tests
-Kirosu uses `pytest` with mocking to ensure tests are fast and free (no API credits used).
+Configuration is merged from `~/.kirosu/config.toml` (global) and `.kiro/config.toml` (local).
+
+| Env Variable | Description | Default |
+|--------------|-------------|---------|
+| `KIRO_PROVIDER` | LLM Backend (`kiro`, `codex`) | `kiro` |
+| `MITTELO_KIRO_MODEL` | Model ID used by agents | `claude-haiku-4.5` |
+| `KIRO_SWARM_KEY` | Authentication Token | `None` (Dev) |
+
+## 🧪 Development & Testing
+
+Kirosu includes a robust test suite.
+
 ```bash
+# Run Unit & Integration Tests
 uv run pytest
+
+# Run Codex Feature Tests (Mocked)
+uv run pytest tests/test_codex_features.py
 ```
 
-### Project Structure
-- `kirosu/`: Main package source.
-    - `hub.py`: Central task server.
-    - `agent.py`: Worker implementation.
-    - `cli.py`: Command-line interface.
-- `examples/`: Demo scripts.
-- `tests/`: Comprehensive test suite.
+## 📂 Project Structure
+- `kirosu/`: Core package.
+    - `hub.py`: Central Orchestrator.
+    - `agent.py`: Worker logic.
+    - `strategy.py`: Planning & Analysis interactions.
+    - `providers.py`: LLM Adapter Layer.
+- `examples/`: Ready-to-run demos (`codex_swarm_demo.py`, `massive_data.py`).
+

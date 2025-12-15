@@ -58,3 +58,19 @@ swarm.run([
 - **Performance Analyst**: Checks for N+1 queries, memory leaks.
 - **Style Enforcer**: Checks PEP8/Linting.
 - **Test Validator**: Ensures coverage > 80%.
+
+## 7. Frontier Model Swarm (Codex)
+**Objective**: Utilize next-generation models for extremely complex or rapid autonomous coding.
+
+**Configuration**:
+- **Provider**: `CodexProvider`
+- **Model**: `gpt-5.1-codex-mini` (or `gpt-6-preview` if available)
+- **Flags**: `--dangerously-bypass-approvals-and-sandbox` (Requires isolated environment)
+
+**Setup**:
+```bash
+# High-speed autonomous mode
+export KIRO_PROVIDER=codex
+kirosu agent --model gpt-5.1-codex-mini
+```
+This mode bypasses all user confirmation steps, allowing for true autonomous operation at the speed of the API. Ideal for overnight batch processing or massive refactoring jobs.
