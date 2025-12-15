@@ -8,10 +8,11 @@ def register(subparsers):
     agent_parser.add_argument("--port", type=int, default=8765, help="Hub port")
     agent_parser.add_argument("--model", help="Override Kiro model")
     agent_parser.add_argument("--log-file", help="Path to log file")
+    agent_parser.add_argument("--id", help="Worker ID (Agent Name)")
     agent_parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
 def handle(args):
-    agent = KiroAgent(args.host, args.port, args.model)
+    agent = KiroAgent(args.host, args.port, args.model, agent_name=args.id)
     try:
         agent.run_loop(log_file=args.log_file, verbose=args.verbose)
     except KeyboardInterrupt:
