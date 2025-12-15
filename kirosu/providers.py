@@ -47,6 +47,11 @@ class CodexProvider:
             "--model", self.model
         ]
         
+        # Add extra args (e.g. --search)
+        extra_args = os.environ.get("KIRO_CODEX_EXTRA_ARGS")
+        if extra_args:
+            cmd.extend(extra_args.split())
+        
         full_prompt = f"System: {system_prompt}\n\nUser: {prompt}" if system_prompt else prompt
         cmd.append(full_prompt)
         
