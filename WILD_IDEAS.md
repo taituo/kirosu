@@ -140,8 +140,15 @@ A gradient of automation ideas, ranging from "Safe & Boring" (0/100) to "Skynet 
     *   **How**: Agent reads Python `agent.py`, writes Rust binding, compiles, replaces original.
 
 30. **Self-Replication (100/100)**
-    *   **Goal**: "Deploy Kirosu to a new AWS instance, SSH in, and start a new Swarm there."
-    *   **How**: Agent with Terraform/SSH keys. It spreads itself to new servers to increase compute.
+    *   **Goal**: "I have 200 pages of raw text". Compile, format, fix continuity, and generate chapter titles.
+    *   **How**: Long-Context Agent with file access.
+
+69. **The Knowledge Benchmark Swarm (Heavyweight)**
+    *   **Goal**: Ingest 1000 Markdown files. Train/optimize RAG or LoRA. Benchmark retrieval speed and accuracy.
+    *   **How**: "Run over a couple of nights".
+        *   Phase 1: 50 Agents cleaning/tagging data parallel.
+        *   Phase 2: Fine-tuning / Indexing.
+        *   Phase 3: Eval Agent running 10,000 queries to find the fastest architecture.
 
 ---
 
