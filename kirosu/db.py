@@ -4,6 +4,7 @@ import sqlite3
 import threading
 import time
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,7 @@ class TaskStore:
         with self._lock:
             cur = self._db.cursor()
             cur.execute("PRAGMA journal_mode=WAL;")
+            cur.execute("PRAGMA synchronous=NORMAL;")
             cur.execute("PRAGMA busy_timeout=3000;")
             cur.execute(
                 """
@@ -142,9 +144,32 @@ class TaskStore:
         with self._lock:
             cur = self._db.cursor()
             cur.execute("SELECT status, COUNT(*) AS n FROM tasks GROUP BY status")
-            out: dict[str, int] = {"queued": 0, "leased": 0, "done": 0, "failed": 0}
+            out: dict[str, Any] = {"queued": 0, "leased": 0, "done": 0, "failed": 0}
+            total = 0
             for r in cur.fetchall():
-                out[str(r["status"])] = int(r["n"])
+                c = int(r["n"])
+                out[str(r["status"])] = c
+                total += c
+            out["total_tasks"] = total
+            
+            # Rich Metrics: Completion Rate (Last 1 hour)
+            one_hour_ago = time.time() - 3600
+            cur.execute("SELECT COUNT(*) FROM tasks WHERE status='done' AND updated_at > ?", (one_hour_ago,))
+            out["completed_last_hour"] = cur.fetchone()[0]
+            
+            # Rich Metrics: Average Duration
+            cur.execute("SELECT AVG(updated_at - created_at) FROM tasks WHERE status='done'")
+            avg_dur = cur.fetchone()[0]
+            out["avg_completion_time_sec"] = round(avg_dur, 2) if avg_dur else 0.0
+
+            # Rich Metrics: Error Rate
+            failed = out["failed"]
+            done = out["done"]
+            if (done + failed) > 0:
+                out["error_rate_percent"] = round((failed / (done + failed)) * 100, 2)
+            else:
+                out["error_rate_percent"] = 0.0
+                
             return out
 
     def retry_all_failed(self) -> int:

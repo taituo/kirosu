@@ -29,3 +29,32 @@ workdir = "/tmp/sandbox/${AGENT_ID}"
 **Objective**: Run tests continuously on new commits.
 
 **Workdir Strategy**: **Ephemeral**. CI pipeline creates a fresh directory for each run.
+
+## 5. Feature Development Swarm
+**Objective**: End-to-end feature implementation using specialized agents.
+
+**Topology**: Recursive / Parallel
+1.  **Requirements Agent**: Analyzes specs and creates a checklist.
+2.  **Architecture Agent**: Designs the components and API.
+3.  **Coder Agent**: Implements the feature and tests.
+4.  **QA Agent**: Reviews code and security.
+
+**Snippet**:
+```python
+# Pseudo-code for a Feature Swarm
+swarm.run([
+    {"role": "Architect", "task": "Design schema for OAuth2"},
+    {"role": "Backend", "task": "Implement API endpoints"},
+    {"role": "Frontend", "task": "Create Login UI"},
+    {"role": "QA", "task": "Verify security"}
+])
+```
+
+## 6. Automated Code Review
+**Objective**: Instant feedback on Pull Requests.
+
+**Topology**: Parallel Swarm
+- **Security Reviewer**: Checks for injection flaws, auth bypass.
+- **Performance Analyst**: Checks for N+1 queries, memory leaks.
+- **Style Enforcer**: Checks PEP8/Linting.
+- **Test Validator**: Ensures coverage > 80%.

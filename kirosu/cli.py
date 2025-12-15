@@ -9,6 +9,7 @@ from .dashboard import run_dashboard
 from .mcp_server import run_mcp_server
 from .api import run_api
 from .config import get_db_path
+from .strategy import print_strategy_suggestion, print_available_strategies, RecursiveStrategy
 
 
 def main() -> NoReturn:
@@ -55,6 +56,15 @@ def main() -> NoReturn:
     api_parser = subparsers.add_parser("api", help="Start the REST API")
     api_parser.add_argument("--host", default="127.0.0.1", help="API host")
     api_parser.add_argument("--port", type=int, default=8000, help="API port")
+
+    # Suggest command
+    suggest_parser = subparsers.add_parser("suggest", help="Suggest agent topology for a task")
+    suggest_parser.add_argument("task", nargs="?", help="Description of the task")
+    suggest_parser.add_argument("--list", action="store_true", help="List available strategies")
+
+    # Recursive run command
+    recursive_parser = subparsers.add_parser("run-recursive", help="Auto-plan and execute a task")
+    recursive_parser.add_argument("task", help="The high-level task to plan and execute")
 
     args = parser.parse_args()
 
@@ -106,6 +116,20 @@ def main() -> NoReturn:
 
     elif args.command == "api":
         run_api(args.host, args.port)
+        sys.exit(0)
+
+    elif args.command == "suggest":
+        if args.list:
+            print_available_strategies()
+        elif args.task:
+            print_strategy_suggestion(args.task)
+        else:
+            print("Error: Please provide a task description or use --list.")
+            sys.exit(1)
+        sys.exit(0)
+
+    elif args.command == "run-recursive":
+        RecursiveStrategy.execute(args.task)
         sys.exit(0)
 
 if __name__ == "__main__":
