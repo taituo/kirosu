@@ -18,6 +18,20 @@ Kirosu (formerly `kiro-swarm`) is a production-ready platform for orchestrating 
 - **Persistent Connections**: TCP-based communication with automatic reconnection and retry logic.
 - **Docker Ready**: Full `docker-compose` support for instant deployment.
 
+## 🐍 Philosophy: Why Python & SQLite?
+
+**We built Kirosu to move fast.**
+
+Could we have written this in Go or Rust? **Yes.**
+Would it serve 100k requests/second? **Maybe.**
+Would it have taken 6 months to build the first demo? **Definitely.**
+
+Kirosu's architecture (Python 3.10 + SQLite WAL) is a deliberate choice:
+1.  **Code is the Interface**: You don't configure Kirosu with YAML; you script it with Python. This gives you the full power of the ecosystem (`pandas`, `numpy`, `requests`) inside your orchestration logic.
+2.  **Zero-Latency Handoff**: Because the logic is Python, passing objects between "Planner" and "Executor" is trivial.
+3.  **Simplicity scales**: You can run 50 agents on a MacBook Air. That's enough for 99% of real-world use cases.
+4.  **"Don't optimize early"**: When you actually hit the limits of Python (e.g. HFT), you use the **Internal Loop Pattern** (see `technology.md`) to bypass the bottleneck, rather than rewriting the whole OS.
+
 ### 🧠 Intelligence & Strategy
 - **Strategy Suggestion**: `kirosu suggest "task description"` analyzes your goal and recommends the best agent topology (Sequential, Parallel, Recursive).
 - **Recursive Planning**: `kirosu run-recursive` spawns a "Planner Agent" that breaks down complex goals into a YAML pipeline, which is then executed by the swarm.

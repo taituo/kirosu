@@ -154,4 +154,37 @@ flowchart LR
 
 - **Authentication**: Token-based (`KIRO_SWARM_KEY`) for all Hub interactions.
 - **Network**: Binds to `127.0.0.1` by default. Can be exposed via SSH tunnels or VPNs for distributed swarms.
-- **Sandboxing**: By default, agents respect strict permissions. "Dangerous Mode" (`trust-all-tools`) requires explicit user confirmation via flags or config.
+- **Sandboxing**: By default, agents respect strict permissions. "Dangerous Mode" (`trust-all-tools`) requires explicit user confirmation via the CLI/Config.
+
+## ⚖️ Framework Comparison
+
+| Feature | Kirosu Swarm | LangGraph | OpenAI Swarm | CrewAI |
+| :--- | :--- | :--- | :--- | :--- |
+| **State** | Persistent (SQLite) | In-Memory | Transient (Python Obj) | Transient |
+| **Recovery** | Excellent (Resume on restart) | Good (Checkpointing) | Low (Process bound) | Low |
+| **Latency** | Medium (~1s polling) | Ultralow (<10ms) | Low (Direct Call) | High |
+| **Topology** | Hub-Spoke / Star | Directed Cyclic Graph | Direct Handoff | Hierarchical |
+
+### 🚀 Real-Time & High-Frequency Patterns
+
+For use cases requiring sub-second latency (e.g., **Live Betting**, HFT, Robot Control), the default Hub-polling loop (~1s) is too slow.
+
+**Recommended Pattern: "The Internal Loop Monitor"**
+
+Instead of creating a Kirosu task for every single micro-decision, use a **Long-Running Monitor Agent**:
+
+1.  **Agent Leases "Monitor Task"**: The agent picks up a generic "Monitor Odds for Match X" task.
+2.  **Internal Loop**: Inside the tool execution (Python), the agent runs a tight `while` loop interacting with WebSockets/APIs at millisecond speed.
+3.  **Signal Handoff**: When a threshold is met (e.g., "Arbitrage Opportunity Found"), the loop *breaks* or *spawns* a new sub-task to the Hub for other agents to handle (e.g., "Execute Bet").
+
+```python
+# Conceptual "Internal Loop" Tool
+def monitor_live_odds(match_id):
+    ws = connect_websocket(f"wss://odds.api/{match_id}")
+    while True:
+        data = ws.recv() # <10ms
+        if is_opportunity(data):
+            # Only talk to Hub when necessary
+            kirosu.hub.enqueue("Place Bet on Match X")
+```
+

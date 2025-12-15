@@ -168,4 +168,6 @@ class KiroAgent:
             msg = (process.stderr or process.stdout or "").strip()
             raise RuntimeError(f"Python execution failed (code {process.returncode}): {msg}")
             
-        return process.stdout or ""
+        output = process.stdout or ""
+        logging.info(f"Python Tool Output:\n{output.strip()}")
+        return output
