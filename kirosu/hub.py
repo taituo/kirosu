@@ -104,6 +104,15 @@ class JsonlHubHandler(socketserver.StreamRequestHandler):
             state.request_shutdown()
             return {"ok": True}
 
+        if method == "shutdown":
+            state.request_shutdown()
+            return {"ok": True}
+
+        if method == "approve":
+            task_id = int(params["task_id"])
+            state.store.approve_task(task_id)
+            return {"ok": True}
+
         raise ValueError(f"Unknown method: {method}")
 
 

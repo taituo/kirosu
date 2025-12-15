@@ -119,6 +119,20 @@ class TaskStore:
             )
             self._db.commit()
 
+    def approve_task(self, task_id: int, approver: str = "human") -> None:
+        now = time.time()
+        with self._lock:
+            cur = self._db.cursor()
+            cur.execute(
+                """
+                UPDATE tasks
+                SET status='done', updated_at=?, leased_until=NULL, result=?, worker_id=?
+                WHERE task_id=?
+                """,
+                (now, f"Approved by {approver}", approver, task_id),
+            )
+            self._db.commit()
+
     def list(self, status: str | None, limit: int) -> list[Task]:
         with self._lock:
             cur = self._db.cursor()
