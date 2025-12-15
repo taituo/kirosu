@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  hub:
+    build: .
+    command: hub --host 0.0.0.0 --port 8765 --db /app/data/swarm.db
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - kiro-net
+
+  agent:
+    build: .
+    command: agent --host hub --port 8765 --model gpt-5.1-codex-mini
+    environment:
+      - KIRO_PROVIDER=codex
+      # Pass through env for Codex/Kiro CLI if needed
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - hub
+    deploy:
+      replicas: 3
+    networks:
+      - kiro-net
+
+networks:
+  kiro-net:
+    driver: bridge

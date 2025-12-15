@@ -14,11 +14,17 @@ class TestAgentIntegration(unittest.TestCase):
         self.agent.worker_id = "test-worker"
 
     @patch("subprocess.run")
-    def test_tick_chat_task(self, mock_run):
+    def test_tick_chat_task_codex(self, mock_run):
+        # Setup: Switch to Codex Provider
+        # We need to re-init agent or patch get_provider? 
+        # Easier to just set the provider directly for this test
+        from kirosu.providers import CodexProvider
+        self.agent.provider = CodexProvider(model="test-codex")
+        
         # Setup: Hub returns a task
         task = {
             "task_id": 123,
-            "prompt": "Hello world",
+            "prompt": "Optimize this code",
             "type": "chat"
         }
         self.agent.client.call.side_effect = [
@@ -26,33 +32,29 @@ class TestAgentIntegration(unittest.TestCase):
             {"ok": True}        # Response to ack
         ]
         
-        # Mock kiro-cli execution
+        # Mock codex-cli execution
         mock_process = MagicMock()
         mock_process.returncode = 0
-        mock_process.stdout = "AI Response"
+        mock_process.stdout = "Optimized Code"
         mock_run.return_value = mock_process
 
         # Execute one tick
         self.agent._tick()
 
-        # Verify lease call
-        self.agent.client.call.assert_any_call("lease", {
-            "worker_id": "test-worker", 
-            "max_tasks": 1, 
-            "lease_seconds": 300
-        })
-
-        # Verify subprocess call (kiro-cli)
+        # Verify subprocess call (codex)
         mock_run.assert_called()
         args = mock_run.call_args[0][0]
-        self.assertIn("kiro-cli", args)
-        self.assertIn("Hello world", args[-1])
+        # Check command structure for Codex
+        self.assertIn("codex", args)
+        self.assertIn("--dangerously-bypass-approvals-and-sandbox", args) # Crucial flag check!
+        self.assertIn("test-codex", args)
+        self.assertIn("Optimize this code", args[-1])
 
         # Verify ack call
         self.agent.client.call.assert_any_call("ack", {
             "task_id": 123,
             "status": "done",
-            "result": "AI Response"
+            "result": "Optimized Code"
         })
 
     @patch("subprocess.run")

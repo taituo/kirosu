@@ -31,35 +31,28 @@ Valid topology keys are: {', '.join(TOPOLOGIES.keys())}.
 DO NOT wrap the output in markdown code blocks. Return raw JSON.
 """
 
+from .providers import get_provider
+
 def suggest_strategy(task_description: str) -> Dict[str, Any]:
     """
-    Uses kiro-cli to analyze the task and suggest a strategy.
+    Uses the configured LLM Provider to analyze the task and suggest a strategy.
     """
-    cmd = ["kiro-cli", "chat", "--no-interactive", "--wrap", "never", "--model", "claude-haiku-4.5"]
-
     # Prompt construction
-    full_prompt = f"System: {SUGGEST_SYSTEM_PROMPT}\n\nUser: Recommend a topology for this task: {task_description}"
+    full_prompt = f"Recommend a topology for this task: {task_description}"
     
-    cmd.append(full_prompt)
-
     try:
-        # We inherit environment variables to ensure we have the API keys
-        env = os.environ.copy()
+        logging.info("Requesting strategy suggestion from LLM Provider...")
         
-        logging.info("Requesting strategy suggestion from LLM...")
-        process = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=False,  # We handle errors manually
-            env=env
-        )
+        provider_name = os.environ.get("KIRO_PROVIDER")
+        model = os.environ.get("MITTELO_KIRO_MODEL", "claude-haiku-4.5")
+        
+        provider = get_provider(provider_name, model)
+        output = provider.run(full_prompt, system_prompt=SUGGEST_SYSTEM_PROMPT)
 
-        if process.returncode != 0:
-            error_msg = (process.stderr or process.stdout or "Unknown error").strip()
-            return {
-                "error": f"LLM call failed: {error_msg}",
-                "topology": "single", # Fallback
+        if not output:
+             return {
+                "error": "LLM call returned empty response",
+                "topology": "single",
                 "command": f"kirosu agent --id single_worker"
             }
 
@@ -167,21 +160,18 @@ pipeline:
         """
         logging.info(f"RecursiveStrategy: Planning task '{task_description}'...")
         
-        # Step 1: Planning
-        cmd = [
-            "kiro-cli", "chat", 
-            "--no-interactive", 
-            "--model", "claude-haiku-4.5",
-            f"System: {RecursiveStrategy.PLANNER_SYSTEM_PROMPT}\n\nUser: Create a plan for: {task_description}"
-        ]
+        logging.info(f"RecursiveStrategy: Planning task '{task_description}'...")
         
-        env = os.environ.copy()
+        # Step 1: Planning
         try:
-            process = subprocess.run(cmd, capture_output=True, text=True, env=env)
-            if process.returncode != 0:
-                raise RuntimeError(f"Planner failed: {process.stderr}")
+            provider_name = os.environ.get("KIRO_PROVIDER")
+            model = os.environ.get("MITTELO_KIRO_MODEL", "claude-haiku-4.5")
+            provider = get_provider(provider_name, model)
             
-            yaml_plan = process.stdout.strip()
+            yaml_plan = provider.run(f"Create a plan for: {task_description}", system_prompt=RecursiveStrategy.PLANNER_SYSTEM_PROMPT)
+            
+            if not yaml_plan:
+                raise RuntimeError("Planner returned empty response")
             # Cleanup common markdown issues
             if yaml_plan.startswith("```yaml"): yaml_plan = yaml_plan[7:]
             if yaml_plan.startswith("```"): yaml_plan = yaml_plan[3:]

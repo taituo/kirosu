@@ -61,6 +61,30 @@ We provide ready-to-run examples to demonstrate Kirosu's capabilities:
 
 Run them with `uv run examples/<script_name>.py`.
 
+## 🚀 Quick Start (Docker)
+
+```bash
+# Start Hub and 3 Codex Agents
+docker-compose up --scale agent=3
+```
+
+## 🚀 Quick Start (Local)
+
+1.  **Install**:
+    ```bash
+    pip install .
+    ```
+
+2.  **Start Hub**:
+    ```bash
+    kirosu hub
+    ```
+
+3.  **Start Agent**:
+    ```bash
+    kirosu agent
+    ```
+
 ## Development
 
 ### Installation

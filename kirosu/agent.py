@@ -69,6 +69,8 @@ class HubClient:
                 raise
 
 
+from .providers import get_provider
+
 class KiroAgent:
     def __init__(self, host: str, port: int, model: str | None = None, workdir: str | None = None, agent_name: str | None = None):
         self.client = HubClient(host, port)
@@ -79,6 +81,10 @@ class KiroAgent:
         
         self.model = model or config.get("model") or os.environ.get("MITTELO_KIRO_MODEL", "claude-haiku-4.5")
         self.workdir = workdir or config.get("workdir")
+        
+        # Initialize Provider
+        provider_name = os.environ.get("KIRO_PROVIDER")
+        self.provider = get_provider(provider_name, self.model)
 
     def run_loop(self, poll_interval: float = 1.0, log_file: str | None = None, verbose: bool = False):
         level = logging.DEBUG if verbose else logging.INFO
@@ -130,7 +136,8 @@ class KiroAgent:
             if task_type == "python":
                 result = self._run_python(prompt)
             else:
-                result = self._run_kiro(prompt, system_prompt)
+                # Use Provider
+                result = self.provider.run(prompt, system_prompt, self.workdir)
                 
             self.client.call("ack", {"task_id": task_id, "status": "done", "result": result})
             logging.info(f"Task {task_id} done.")
@@ -139,37 +146,6 @@ class KiroAgent:
             error_msg = str(e)
             self.client.call("ack", {"task_id": task_id, "status": "failed", "error": error_msg})
             logging.error(f"Task {task_id} failed: {error_msg}")
-
-    def _run_kiro(self, prompt: str, system_prompt: str | None = None) -> str:
-        cmd = ["kiro-cli", "chat", "--no-interactive", "--wrap", "never"]
-        if self.model:
-            cmd.extend(["--model", self.model])
-            
-        # Trust all tools as requested (no sandbox, full access)
-        cmd.append("--trust-all-tools")
-        
-        # Pass prompt as argument (prepend system prompt if present)
-        full_prompt = f"System: {system_prompt}\n\nUser: {prompt}" if system_prompt else prompt
-        cmd.append(full_prompt)
-        
-        # Run in current working directory (or specific one if needed, but user said "here")
-        # We inherit environment variables to allow login persistence if it uses env vars or home dir
-        env = os.environ.copy()
-        
-        process = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=env,
-            cwd=self.workdir
-        )
-        
-        if process.returncode != 0:
-            msg = (process.stderr or process.stdout or "").strip()
-            raise RuntimeError(f"kiro-cli failed (code {process.returncode}): {msg}")
-            
-        return process.stdout or ""
 
     def _run_python(self, code: str) -> str:
         # DANGEROUS: Runs arbitrary Python code

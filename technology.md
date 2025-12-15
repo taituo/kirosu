@@ -93,13 +93,21 @@ Kirosu supports a `type="python"` task which executes arbitrary code on the agen
 - **Mitigation**: Explicit opt-in via `trust-all-tools` and `KIRO_SWARM_KEY` for auth.
 - **Use Case**: Bug fixing, file system manipulation, complex calculations.
 
-### 3. Workspace Management
-Kirosu agents operate within a configurable `workdir`.
+### 3. LLM Provider Adapter
+Kirosu uses an Adapter Pattern (`kirosu/providers.py`) to interface with different LLM CLIs.
+
+- **KiroCliProvider**: wrapper for `kiro-cli` (Standard).
+- **CodexProvider**: wrapper for `codex` (Frontier models).
+  - Supports `--dangerously-bypass-approvals-and-sandbox` for high-throughput automation.
+  - Activated via `KIRO_PROVIDER=codex`.
+
+## 4. Workdir Strategies
+The `workdir` config determines how agents share state:
 - **Shared Workspace**: Agents share a directory (e.g., repo root). Useful for read-only analysis or when file locking is managed externally.
 - **Isolated Workspace**: Agents work in private directories (e.g., `/tmp/agent_1`). Essential for "Dangerous" execution to prevent side effects.
 - **Context Injection**: The `.kiro/context.md` file is resolved relative to the agent's `workdir`.
 
-### 4. Swarm Patterns: Map-Reduce
+### 5. Swarm Patterns: Map-Reduce
 For massive data processing, we use a Splitter-Aggregator pattern.
 
 ```mermaid
