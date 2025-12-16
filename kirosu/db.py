@@ -5,6 +5,7 @@ import threading
 import time
 from dataclasses import dataclass
 from typing import Any
+from queue import Queue
 
 
 @dataclass(frozen=True)
@@ -23,20 +24,32 @@ class Task:
 
 
 class TaskStore:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, pool_size: int = 5):
         self.db_path = db_path
-        self._lock = threading.RLock()
-        self._db = sqlite3.connect(self.db_path, check_same_thread=False)
-        self._db.row_factory = sqlite3.Row
+        self._pool = Queue(maxsize=pool_size)
+        for _ in range(pool_size):
+            conn = sqlite3.connect(self.db_path, check_same_thread=False)
+            conn.row_factory = sqlite3.Row
+            self._pool.put(conn)
         self._init_db()
 
     def close(self) -> None:
-        with self._lock:
-            self._db.close()
+        while not self._pool.empty():
+            conn = self._pool.get()
+            conn.close()
+
+    def _get_conn(self) -> sqlite3.Connection:
+        """Get connection from pool (blocking if empty)."""
+        return self._pool.get()
+
+    def _return_conn(self, conn: sqlite3.Connection) -> None:
+        """Return connection to pool."""
+        self._pool.put(conn)
 
     def _init_db(self) -> None:
-        with self._lock:
-            cur = self._db.cursor()
+        conn = self._get_conn()
+        try:
+            cur = conn.cursor()
             cur.execute("PRAGMA journal_mode=WAL;")
             cur.execute("PRAGMA synchronous=NORMAL;")
             cur.execute("PRAGMA busy_timeout=3000;")
@@ -46,9 +59,9 @@ class TaskStore:
                   task_id INTEGER PRIMARY KEY AUTOINCREMENT,
                   prompt TEXT NOT NULL,
                   system_prompt TEXT,
-            type TEXT DEFAULT 'chat',
-            status TEXT NOT NULL,
-            created_at REAL NOT NULL,
+                  type TEXT DEFAULT 'chat',
+                  status TEXT NOT NULL,
+                  created_at REAL NOT NULL,
                   updated_at REAL NOT NULL,
                   leased_until REAL,
                   worker_id TEXT,
@@ -57,58 +70,74 @@ class TaskStore:
                 )
                 """
             )
-            self._db.commit()
+            # P0 Optimization: Add composite index for lease() query performance
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_lease_status_leased_until
+                ON tasks(status, leased_until)
+                """
+            )
+            conn.commit()
+        finally:
+            self._return_conn(conn)
 
     def enqueue(self, prompt: str, system_prompt: str | None = None, task_type: str = "chat") -> int:
-        with self._lock:
+        conn = self._get_conn()
+        try:
             now = time.time()
-            cur = self._db.cursor()
+            cur = conn.cursor()
             cur.execute(
                 "INSERT INTO tasks (prompt, system_prompt, type, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
                 (prompt, system_prompt, task_type, "queued", now, now),
             )
-            self._db.commit()
+            conn.commit()
             return cur.lastrowid  # type: ignore
+        finally:
+            self._return_conn(conn)
 
     def lease(self, worker_id: str, max_tasks: int, lease_seconds: int) -> list[Task]:
-        now = time.time()
-        leased_until = now + float(lease_seconds)
-        with self._lock:
-            cur = self._db.cursor()
+        """
+        Optimized lease method using atomic UPDATE...RETURNING (P0) 
+        and connection pooling (P1) to eliminate global lock contention.
+        """
+        conn = self._get_conn()
+        try:
+            now = time.time()
+            leased_until = now + float(lease_seconds)
+            cur = conn.cursor()
+            
+            # P0 Optimization: Single atomic UPDATE...RETURNING
+            # Replaces N+1 query pattern (Select + N Updates + N Selects)
             cur.execute(
                 """
-                SELECT task_id FROM tasks
-                WHERE status = 'queued' OR (status='leased' AND leased_until IS NOT NULL AND leased_until < ?)
-                ORDER BY task_id ASC
-                LIMIT ?
-                """,
-                (now, max_tasks),
-            )
-            ids = [int(r["task_id"]) for r in cur.fetchall()]
-            tasks: list[Task] = []
-            for task_id in ids:
-                cur.execute(
-                    """
-                    UPDATE tasks
-                    SET status='leased', updated_at=?, leased_until=?, worker_id=?
-                    WHERE task_id=?
-                    """,
-                    (now, leased_until, worker_id, task_id),
+                UPDATE tasks
+                SET status='leased', updated_at=?, leased_until=?, worker_id=?
+                WHERE task_id IN (
+                    SELECT task_id FROM tasks
+                    WHERE status = 'queued' OR (status='leased' AND leased_until IS NOT NULL AND leased_until < ?)
+                    ORDER BY task_id ASC
+                    LIMIT ?
                 )
-                cur.execute("SELECT * FROM tasks WHERE task_id=?", (task_id,))
-                row = cur.fetchone()
-                if row is not None:
-                    tasks.append(self._row_to_task(row))
-            self._db.commit()
+                RETURNING *
+                """,
+                (now, leased_until, worker_id, now, max_tasks),
+            )
+            
+            tasks = [self._row_to_task(r) for r in cur.fetchall()]
+            conn.commit()
             return tasks
+        finally:
+            self._return_conn(conn)
 
     def ack(self, task_id: int, status: str, result: str | None, error: str | None) -> None:
-        now = time.time()
-        status_norm = status.lower().strip()
-        if status_norm not in {"done", "failed"}:
-            raise ValueError("status must be done|failed")
-        with self._lock:
-            cur = self._db.cursor()
+        conn = self._get_conn()
+        try:
+            now = time.time()
+            status_norm = status.lower().strip()
+            if status_norm not in {"done", "failed"}:
+                raise ValueError("status must be done|failed")
+                
+            cur = conn.cursor()
             cur.execute(
                 """
                 UPDATE tasks
@@ -117,12 +146,15 @@ class TaskStore:
                 """,
                 (status_norm, now, result, error, task_id),
             )
-            self._db.commit()
+            conn.commit()
+        finally:
+            self._return_conn(conn)
 
     def approve_task(self, task_id: int, approver: str = "human") -> None:
-        now = time.time()
-        with self._lock:
-            cur = self._db.cursor()
+        conn = self._get_conn()
+        try:
+            now = time.time()
+            cur = conn.cursor()
             cur.execute(
                 """
                 UPDATE tasks
@@ -131,11 +163,14 @@ class TaskStore:
                 """,
                 (now, f"Approved by {approver}", approver, task_id),
             )
-            self._db.commit()
+            conn.commit()
+        finally:
+            self._return_conn(conn)
 
     def list(self, status: str | None, limit: int) -> list[Task]:
-        with self._lock:
-            cur = self._db.cursor()
+        conn = self._get_conn()
+        try:
+            cur = conn.cursor()
             status_norm = status.lower().strip() if status else None
 
             if limit <= 0:
@@ -153,10 +188,13 @@ class TaskStore:
                     cur.execute("SELECT * FROM tasks ORDER BY task_id DESC LIMIT ?", (limit,))
 
             return [self._row_to_task(r) for r in cur.fetchall()]
+        finally:
+            self._return_conn(conn)
 
     def stats(self) -> dict[str, int]:
-        with self._lock:
-            cur = self._db.cursor()
+        conn = self._get_conn()
+        try:
+            cur = conn.cursor()
             cur.execute("SELECT status, COUNT(*) AS n FROM tasks GROUP BY status")
             out: dict[str, Any] = {"queued": 0, "leased": 0, "done": 0, "failed": 0}
             total = 0
@@ -169,11 +207,13 @@ class TaskStore:
             # Rich Metrics: Completion Rate (Last 1 hour)
             one_hour_ago = time.time() - 3600
             cur.execute("SELECT COUNT(*) FROM tasks WHERE status='done' AND updated_at > ?", (one_hour_ago,))
-            out["completed_last_hour"] = cur.fetchone()[0]
+            res_count = cur.fetchone()
+            out["completed_last_hour"] = res_count[0] if res_count else 0
             
             # Rich Metrics: Average Duration
             cur.execute("SELECT AVG(updated_at - created_at) FROM tasks WHERE status='done'")
-            avg_dur = cur.fetchone()[0]
+            res_avg = cur.fetchone()
+            avg_dur = res_avg[0] if res_avg else None
             out["avg_completion_time_sec"] = round(avg_dur, 2) if avg_dur else 0.0
 
             # Rich Metrics: Error Rate
@@ -185,11 +225,14 @@ class TaskStore:
                 out["error_rate_percent"] = 0.0
                 
             return out
+        finally:
+            self._return_conn(conn)
 
     def retry_all_failed(self) -> int:
-        now = time.time()
-        with self._lock:
-            cur = self._db.cursor()
+        conn = self._get_conn()
+        try:
+            now = time.time()
+            cur = conn.cursor()
             cur.execute(
                 """
                 UPDATE tasks
@@ -199,8 +242,10 @@ class TaskStore:
                 (now,),
             )
             count = cur.rowcount
-            self._db.commit()
+            conn.commit()
             return count
+        finally:
+            self._return_conn(conn)
 
     @staticmethod
     def _row_to_task(row: sqlite3.Row) -> Task:

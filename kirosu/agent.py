@@ -69,6 +69,7 @@ class HubClient:
                 raise
 
 
+from .config import get_agent_config, load_mcp_config
 from .providers import get_provider
 
 class KiroAgent:
@@ -78,6 +79,7 @@ class KiroAgent:
         
         # Load config
         config = get_agent_config(agent_name) if agent_name else {}
+        self.mcp_config = load_mcp_config()
         
         self.model = model or config.get("model") or os.environ.get("MITTELO_KIRO_MODEL", "claude-haiku-4.5")
         self.workdir = workdir or config.get("workdir")

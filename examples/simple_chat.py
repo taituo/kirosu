@@ -53,7 +53,7 @@ async def chat_loop():
         return
 
     agent = start_process(
-        [sys.executable, "-m", "kirosu.cli", "agent", "--port", str(HUB_PORT), "--id", "chat_bot", "--model", "gpt-5.1-codex-mini"],
+        [sys.executable, "-m", "kirosu.cli", "agent", "--port", str(HUB_PORT), "--id", "chat_bot", "--model", "claude-haiku-4.5"],
         "Agent"
     )
     time.sleep(2) # Agent needs a moment to register

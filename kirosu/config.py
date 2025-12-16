@@ -7,12 +7,17 @@ from pathlib import Path
 from typing import Any
 
 # Default paths
-GLOBAL_CONFIG_DIR = Path.home() / ".kirosu"
+GLOBAL_CONFIG_DIR = Path.home() / ".kiro"
 GLOBAL_CONFIG_FILE = GLOBAL_CONFIG_DIR / "config.toml"
 DEFAULT_DB_PATH = GLOBAL_CONFIG_DIR / "kirosu.db"
 
 LOCAL_CONFIG_DIR = Path.cwd() / ".kiro"
 LOCAL_CONFIG_FILE = LOCAL_CONFIG_DIR / "config.toml"
+
+
+# MCP Config paths
+GLOBAL_MCP_FILE = GLOBAL_CONFIG_DIR / "settings" / "mcp.json"
+LOCAL_MCP_FILE = LOCAL_CONFIG_DIR / "settings" / "mcp.json"
 
 def _merge_dicts(base: dict, update: dict) -> dict:
     """Recursively merge two dictionaries."""
@@ -44,6 +49,31 @@ def load_config() -> dict[str, Any]:
                 config = _merge_dicts(config, local_config)
         except Exception as e:
             print(f"Warning: Failed to load local config: {e}")
+            
+    return config
+
+def load_mcp_config() -> dict[str, Any]:
+    """Load MCP configuration from global and local mcp.json files."""
+    import json
+    config = {"mcpServers": {}}
+    
+    # Load global mcp.json
+    if GLOBAL_MCP_FILE.exists():
+        try:
+            with open(GLOBAL_MCP_FILE, "r") as f:
+                global_mcp = json.load(f)
+                config = _merge_dicts(config, global_mcp)
+        except Exception as e:
+            print(f"Warning: Failed to load global MCP config: {e}")
+
+    # Load local mcp.json
+    if LOCAL_MCP_FILE.exists():
+        try:
+            with open(LOCAL_MCP_FILE, "r") as f:
+                local_mcp = json.load(f)
+                config = _merge_dicts(config, local_mcp)
+        except Exception as e:
+            print(f"Warning: Failed to load local MCP config: {e}")
             
     return config
 

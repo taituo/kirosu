@@ -50,7 +50,25 @@ swarm.run([
 ])
 ```
 
-## 6. Automated Code Review
+## 6. The "Context Sieve" Pattern (Data Filter)
+
+**Problem:** Some MCP tools (e.g., database dumps, log analyzers, detailed API responses) return massive amounts of JSON/text, instantly filling the context window and confusing the LLM.
+
+**Solution:**
+Delegate the heavy tool usage to a specialized "Sieve Agent".
+1.  **Main Agent**: "I need to know the error rate from yesterday's logs. Ask the LogAnalyzer agent."
+2.  **Sieve Agent**: Calls the noisy `fetch_logs` tool (receiving 10MB of text).
+3.  **Sieve Agent**: Analyzes the raw data internally.
+4.  **Sieve Agent**: Returns *only* the answer: "The error rate was 0.5% with 23 exceptions."
+5.  **Main Agent**: Receives clean, concise data. Context remains empty of noise.
+
+**Ideal for:**
+-   Log analysis
+-   Database schema exploration
+-   Large API responses (e.g., list of 1000 repositories)
+-   File system crawling
+
+## 7. Automated Code Review
 **Objective**: Instant feedback on Pull Requests.
 
 **Topology**: Parallel Swarm
